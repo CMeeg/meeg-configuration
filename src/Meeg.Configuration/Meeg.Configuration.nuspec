@@ -11,11 +11,11 @@
         <tags>configuration</tags>
         <repository type="git" url="https://github.com/CMeeg/meeg-configuration.git" />
         <dependencies>
-            <group targetFramework=".NETFramework4.7.2" />
+            <group targetFramework=".NETFramework4.6" />
         </dependencies>
     </metadata>
     <files>
-        <file src="bin\$configuration$\$id$.dll" target="lib\net472" />
-        <file src="bin\$configuration$\$id$.pdb" target="lib\net472" />
+        <file src="bin\$configuration$\$id$.dll" target="lib\net46" />
+        <file src="bin\$configuration$\$id$.pdb" target="lib\net46" />
     </files>
 </package>
