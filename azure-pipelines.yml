@@ -1,0 +1,15 @@
+trigger:
+- feature/azure-pipelines
+
+pr: none
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+
+- task: PowerShell@2
+  inputs:
+    filePath: '.\build.ps1'
+    arguments: '-Target Package'
+    pwsh: true
