@@ -9,7 +9,21 @@ pool:
 steps:
 
 - task: PowerShell@2
+  displayName: Build and package artifacts
   inputs:
-    filePath: '.\build.ps1'
+    filePath: './build.ps1'
     arguments: '-Target Package'
     pwsh: true
+
+- task: CopyFiles@2
+  displayName: Copy build artifacts
+  inputs:
+    sourceFolder: '.dist'
+    contents: '*'
+    targetFolder: $(Build.ArtifactStagingDirectory)
+
+- task: PublishBuildArtifacts@1
+  displayName: Publish build artifacts
+  inputs:
+    pathToPublish: $(Build.ArtifactStagingDirectory)
+    artifactName: Package

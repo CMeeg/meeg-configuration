@@ -17,13 +17,13 @@ var configuration = Argument("configuration", "Release");
 // PREPARATION
 //////////////////////////////////////////////////////////////////////
 
-// Define directories.
 string projectName = "Meeg.Configuration";
+GitVersion version;
+
 var solutionPath = File($"./src/{projectName}.sln");
 var projectDir = Directory($"./src/{projectName}");
 var binDir = projectDir + Directory("bin") + Directory(configuration);
 var distDir = Directory("./.dist");
-GitVersion version;
 
 //////////////////////////////////////////////////////////////////////
 // TASKS
@@ -111,6 +111,9 @@ Task("NuGet-Pack")
 //////////////////////////////////////////////////////////////////////
 
 Task("Default")
+    .IsDependentOn("Run-Unit-Tests");
+
+Task("Package")
     .IsDependentOn("NuGet-Pack");
 
 //////////////////////////////////////////////////////////////////////
