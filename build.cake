@@ -122,7 +122,7 @@ Task("NuGet-Pack")
         OutputDirectory = data.DistDirectoryPath,
         Properties = new Dictionary<string, string> {
             { "id", assemblyInfo.Title },
-            { "version", data.Version.NuGetVersion },
+            { "version", data.Version.FullSemVer },
             { "description", assemblyInfo.Description },
             { "author", assemblyInfo.Company },
             { "copyright", assemblyInfo.Copyright },
