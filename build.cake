@@ -119,7 +119,6 @@ Task("NuGet-Pack")
     // Create the NuGet package
 
     var settings = new NuGetPackSettings {
-        Symbols = true,
         OutputDirectory = data.DistDirectoryPath,
         Properties = new Dictionary<string, string> {
             { "id", assemblyInfo.Title },
@@ -128,18 +127,12 @@ Task("NuGet-Pack")
             { "author", assemblyInfo.Company },
             { "copyright", assemblyInfo.Copyright },
             { "configuration", data.Configuration }
-        }
+        },
+        Symbols = true,
+        ArgumentCustomization = args => args.Append("-SymbolPackageFormat snupkg")
     };
 
     NuGetPack(data.ProjectDirectoryPath + File($"{data.ProjectName}.nuspec"), settings);
-
-    // Move symbols files to sub-directory
-    ConvertableFilePath symbolsFilesPath = data.DistDirectoryPath + File("*.symbols.nupkg");
-    ConvertableDirectoryPath symbolsDirectoryPath = data.DistDirectoryPath + Directory("symbols");
-
-    EnsureDirectoryExists(symbolsDirectoryPath);
-
-    MoveFiles(symbolsFilesPath, symbolsDirectoryPath);
 });
 
 Task("NuGet-Publish")
