@@ -1,7 +1,10 @@
 trigger:
-- feature/azure-pipelines
+- master
+- release/*
 
-pr: none
+pr:
+- master
+- develop
 
 pool:
   vmImage: 'windows-latest'
@@ -9,21 +12,21 @@ pool:
 steps:
 
 - task: PowerShell@2
-  displayName: Build and package artifacts
+  displayName: Build artifacts
   inputs:
     filePath: './build.ps1'
     arguments: '-Target Package'
     pwsh: true
 
 - task: CopyFiles@2
-  displayName: Copy build artifacts
+  displayName: Copy artifacts
   inputs:
     sourceFolder: '.dist'
-    contents: '*'
+    contents: '**'
     targetFolder: $(Build.ArtifactStagingDirectory)
 
 - task: PublishBuildArtifacts@1
-  displayName: Publish build artifacts
+  displayName: Publish artifacts
   inputs:
     pathToPublish: $(Build.ArtifactStagingDirectory)
     artifactName: Package
