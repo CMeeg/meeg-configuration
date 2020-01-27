@@ -1,0 +1,32 @@
+trigger:
+- master
+- release/*
+
+pr:
+- master
+- develop
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+
+- task: PowerShell@2
+  displayName: Build artifacts
+  inputs:
+    filePath: './build.ps1'
+    arguments: '-Target Package'
+    pwsh: true
+
+- task: CopyFiles@2
+  displayName: Copy artifacts
+  inputs:
+    sourceFolder: '.dist'
+    contents: '**'
+    targetFolder: $(Build.ArtifactStagingDirectory)
+
+- task: PublishBuildArtifacts@1
+  displayName: Publish artifacts
+  inputs:
+    pathToPublish: $(Build.ArtifactStagingDirectory)
+    artifactName: Package

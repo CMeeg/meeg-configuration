@@ -7,114 +7,182 @@
 #addin "nuget:?package=Cake.Incubator&version=5.1.0"
 
 //////////////////////////////////////////////////////////////////////
-// ARGUMENTS
+// Arguments
 //////////////////////////////////////////////////////////////////////
 
 var target = Argument("target", "Default");
 var configuration = Argument("configuration", "Release");
 
 //////////////////////////////////////////////////////////////////////
-// PREPARATION
+// Context
 //////////////////////////////////////////////////////////////////////
 
-// Define directories.
-string projectName = "Meeg.Configuration";
-var solutionPath = File($"./src/{projectName}.sln");
-var projectDir = Directory($"./src/{projectName}");
-var binDir = projectDir + Directory("bin") + Directory(configuration);
-var distDir = Directory("./.dist");
-GitVersion version;
+public class BuildData
+{
+    public string ProjectName { get; }
+    public string Configuration { get; }
+    public ConvertableDirectoryPath SourceDirectoryPath { get; }
+    public ConvertableDirectoryPath DistDirectoryPath { get; }
+    public ConvertableFilePath SolutionFilePath { get; }
+    public ConvertableDirectoryPath ProjectDirectoryPath { get; }
+    public ConvertableDirectoryPath BinDirectoryPath { get; }
+    public GitVersion Version { get; set; }
+
+    public BuildData(ICakeContext context, string projectName, string configuration)
+    {
+        ProjectName = projectName;
+        Configuration = configuration;
+
+        SourceDirectoryPath = context.Directory("./src");
+        DistDirectoryPath = context.Directory("./.dist");
+
+        SolutionFilePath = SourceDirectoryPath + context.File($"{projectName}.sln");
+        ProjectDirectoryPath = SourceDirectoryPath + context.Directory(projectName);
+        BinDirectoryPath = ProjectDirectoryPath + context.Directory("bin") + context.Directory(configuration);
+    }
+}
 
 //////////////////////////////////////////////////////////////////////
-// TASKS
+// Setup
+//////////////////////////////////////////////////////////////////////
+
+Setup<BuildData>(setupContext => {
+    return new BuildData(
+        setupContext,
+        "Meeg.Configuration",
+        configuration
+    );
+});
+
+//////////////////////////////////////////////////////////////////////
+// Tasks
 //////////////////////////////////////////////////////////////////////
 
 Task("Clean")
-    .Does(() =>
+    .Does<BuildData>(data =>
 {
-    Information("Cleaning " + binDir);
-    CleanDirectory(binDir);
+    Information("Cleaning " + data.BinDirectoryPath);
+    CleanDirectory(data.BinDirectoryPath);
 
-    Information("Cleaning " + distDir);
-    CleanDirectory(distDir);
+    Information("Cleaning " + data.DistDirectoryPath);
+    CleanDirectory(data.DistDirectoryPath);
 });
 
 Task("Restore-NuGet-Packages")
     .IsDependentOn("Clean")
-    .Does(() =>
+    .Does<BuildData>(data =>
 {
-    NuGetRestore(solutionPath);
+    NuGetRestore(data.SolutionFilePath);
 });
 
 Task("Version")
     .IsDependentOn("Restore-NuGet-Packages")
-    .Does(() =>
+    .Does<BuildData>(data =>
 {
-    version = GitVersion(new GitVersionSettings {
+    data.Version = GitVersion(new GitVersionSettings {
         UpdateAssemblyInfo = true
     });
 
-    Information(version.Dump());
+    Information(data.Version.Dump());
 });
 
 Task("Build")
     .IsDependentOn("Version")
-    .Does(() =>
+    .Does<BuildData>(data =>
 {
     MSBuild(
-        solutionPath,
+        data.SolutionFilePath,
         settings => settings
-            .SetConfiguration(configuration)
+            .SetConfiguration(data.Configuration)
             .SetVerbosity(Verbosity.Minimal)
     );
 });
 
 Task("Run-Unit-Tests")
     .IsDependentOn("Build")
-    .Does(() =>
+    .Does<BuildData>(data =>
 {
-    NUnit3("./src/**/bin/" + configuration + "/*.Tests.dll", new NUnit3Settings {
+    NUnit3("./src/**/bin/" + data.Configuration + "/*.Tests.dll", new NUnit3Settings {
         NoResults = true
     });
 });
 
 Task("NuGet-Pack")
     .IsDependentOn("Run-Unit-Tests")
-    .Does(() =>
+    .Does<BuildData>(data =>
 {
     // Get assembly info, which we will use to populate package metadata
 
-    FilePath assemblyInfoPath = projectDir + Directory("Properties") + File("AssemblyInfo.cs");
-    AssemblyInfoParseResult assemblyInfo = ParseAssemblyInfo(assemblyInfoPath);
+    FilePath assemblyInfoFilePath = data.ProjectDirectoryPath + Directory("Properties") + File("AssemblyInfo.cs");
+    AssemblyInfoParseResult assemblyInfo = ParseAssemblyInfo(assemblyInfoFilePath);
 
     // Create the NuGet package
 
     var settings = new NuGetPackSettings {
-        // BasePath = binDir,
         Symbols = true,
-        OutputDirectory = distDir,
+        OutputDirectory = data.DistDirectoryPath,
         Properties = new Dictionary<string, string> {
             { "id", assemblyInfo.Title },
-            { "version", version.NuGetVersion },
+            { "version", data.Version.NuGetVersion },
             { "description", assemblyInfo.Description },
             { "author", assemblyInfo.Company },
             { "copyright", assemblyInfo.Copyright },
-            { "configuration", configuration }
+            { "configuration", data.Configuration }
         }
     };
 
-    NuGetPack(projectDir + File($"{projectName}.nuspec"), settings);
+    NuGetPack(data.ProjectDirectoryPath + File($"{data.ProjectName}.nuspec"), settings);
+
+    // Move symbols files to sub-directory
+    ConvertableFilePath symbolsFilesPath = data.DistDirectoryPath + File("*.symbols.nupkg");
+    ConvertableDirectoryPath symbolsDirectoryPath = data.DistDirectoryPath + Directory("symbols");
+
+    EnsureDirectoryExists(symbolsDirectoryPath);
+
+    MoveFiles(symbolsFilesPath, symbolsDirectoryPath);
+});
+
+Task("NuGet-Publish")
+    .IsDependentOn("NuGet-Pack")
+    .Does<BuildData>(data =>
+{
+    if (!BuildSystem.IsLocalBuild)
+    {
+        Error("This script will only publish to a local NuGet feed.");
+
+        return;
+    }
+
+    string nuGetFeedPath = EnvironmentVariable("NUGET_LOCAL_FEED_PATH");
+
+    if (string.IsNullOrEmpty(nuGetFeedPath))
+    {
+        Error("NUGET_LOCAL_FEED_PATH environment variable not set.");
+
+        return;
+    }
+
+    NuGetInit(
+        data.DistDirectoryPath,
+        nuGetFeedPath
+    );
 });
 
 //////////////////////////////////////////////////////////////////////
-// TASK TARGETS
+// Targets
 //////////////////////////////////////////////////////////////////////
 
 Task("Default")
+    .IsDependentOn("Run-Unit-Tests");
+
+Task("Package")
     .IsDependentOn("NuGet-Pack");
 
+Task("Publish")
+    .IsDependentOn("NuGet-Publish");
+
 //////////////////////////////////////////////////////////////////////
-// EXECUTION
+// Execution
 //////////////////////////////////////////////////////////////////////
 
 RunTarget(target);
