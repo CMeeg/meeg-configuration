@@ -26,7 +26,7 @@ public class BuildData
     public ConvertableFilePath SolutionFilePath { get; }
     public ConvertableDirectoryPath ProjectDirectoryPath { get; }
     public ConvertableDirectoryPath BinDirectoryPath { get; }
-    public GitVersion Version { get; set; }
+    public string Version { get; set; }
 
     public BuildData(ICakeContext context, string projectName, string configuration)
     {
@@ -79,11 +79,15 @@ Task("Version")
     .IsDependentOn("Restore-NuGet-Packages")
     .Does<BuildData>(data =>
 {
-    data.Version = GitVersion(new GitVersionSettings {
+    var gitVersion = GitVersion(new GitVersionSettings {
         UpdateAssemblyInfo = true
     });
 
-    Information(data.Version.Dump());
+    data.Version = $"{gitVersion.NuGetVersion}{gitVersion.BuildMetaDataPadded}";
+
+    Information(gitVersion.Dump());
+
+    Information($"BuildDataVersion: {data.Version}");
 });
 
 Task("Build")
@@ -122,7 +126,7 @@ Task("NuGet-Pack")
         OutputDirectory = data.DistDirectoryPath,
         Properties = new Dictionary<string, string> {
             { "id", assemblyInfo.Title },
-            { "version", data.Version.FullSemVer },
+            { "version", data.Version },
             { "description", assemblyInfo.Description },
             { "author", assemblyInfo.Company },
             { "copyright", assemblyInfo.Copyright },
