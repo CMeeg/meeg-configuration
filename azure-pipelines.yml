@@ -32,20 +32,24 @@ stages:
         pathToPublish: $(Build.ArtifactStagingDirectory)
         artifactName: Package
 - stage: Publish
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), eq(variables['Build.Reason'], 'Manual')))
   pool:
     vmImage: 'windows-latest'
   jobs:
-  - job: Publish
-    steps:
-    - task: NuGetToolInstaller@1
-      displayName: 'Use NuGet 5.4.0'
-      inputs:
-        versionSpec: 5.4.0
-    - task: NuGetCommand@2
-      displayName: 'NuGet push packages'
-      inputs:
-        command: push
-        packagesToPush: '$(Build.ArtifactStagingDirectory)/Package/*.nupkg'
-        nuGetFeedType: external
-        publishFeedCredentials: 'NuGet - Meeg'
+  - deployment: Publish
+    environment: NuGet-Public
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: NuGetToolInstaller@1
+            displayName: 'Use NuGet 5.4.0'
+            inputs:
+              versionSpec: 5.4.0
+          - task: NuGetCommand@2
+            displayName: 'NuGet push packages'
+            inputs:
+              command: push
+              packagesToPush: '$(Agent.BuildDirectory)/Package/*.nupkg'
+              nuGetFeedType: external
+              publishFeedCredentials: 'NuGet - Meeg'
