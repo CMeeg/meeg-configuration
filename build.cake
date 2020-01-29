@@ -51,6 +51,11 @@ public class BuildData
             throw new InvalidOperationException("`GitVersion` has not been set. Make sure that the 'Version' task has run prior to accessing this property.");
         }
 
+        if (string.IsNullOrEmpty(GitVersion.PreReleaseTag))
+        {
+            return GitVersion.NuGetVersion;
+        }
+
         return $"{GitVersion.NuGetVersion}{GitVersion.BuildMetaDataPadded}";
     }
 }
