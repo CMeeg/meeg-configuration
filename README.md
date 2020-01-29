@@ -1,5 +1,7 @@
 # Meeg.Configuration
 
+[![Build Status](https://dev.azure.com/cpmeeg/Meeg/_apis/build/status/meeg-configuration?branchName=develop)](https://dev.azure.com/cpmeeg/Meeg/_build/latest?definitionId=5&branchName=develop)
+
 The purpose of this library is to provide a configuration API for .NET Framework projects that matches parts of the configuration API found in .NET Core. Specifically, the API provides equivalents to:
 
 * [GetValue](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-3.1#getvalue)
