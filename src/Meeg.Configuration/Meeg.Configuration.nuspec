@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>$id$</id>
+        <version>$version$</version>
+        <description>$description$</description>
+        <authors>$author$</authors>
+        <projectUrl>https://github.com/CMeeg/meeg-configuration</projectUrl>
+        <license type="expression">MIT</license>
+        <copyright>$copyright$</copyright>
+        <tags>configuration</tags>
+        <dependencies>
+            <group targetFramework=".NETFramework4.6" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="bin\$configuration$\$id$.dll" target="lib\net46" />
+        <file src="bin\$configuration$\$id$.pdb" target="lib\net46" />
+    </files>
+</package>
