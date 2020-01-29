@@ -8,11 +8,14 @@ The release process differs slightly depending on if you are compiling a:
 
 ## Local release
 
-To perform a new local release:
+Local releases require a local NuGet feed is available:
 
 * Ensure that you have designated a directory to act as a [local NuGet feed](https://docs.microsoft.com/en-us/nuget/hosting-packages/local-feeds)
-  * If you have not already done so, also set this local feed as a NuGet source
+  * If you have not already done so, also set this local feed as a [NuGet source](https://docs.microsoft.com/en-us/nuget/reference/cli-reference/cli-ref-sources)
 * Set an environment variable `NUGET_LOCAL_FEED_PATH` and use the full path to your local NuGet feed as its value
+
+To perform a new local release:
+
 * Execute the build script using Powershell:
   * `./build.ps1 -Target Publish`
 
@@ -25,15 +28,17 @@ This will place a new pre-release version of the software on to your local NuGet
 To perform a new pre-release:
 
 * Ensure that any completed feature branches / pull requests ready for release have been merged into `develop`
-* Create a new release branch from `develop`
-  * Name the release branch according to SemVer based on the work that has been completed since the last general release
+* Create a new `release` branch from `develop`
+  * Name the release branch according to SemVer based on the work that has been completed since the last general release e.g. `release/1.0.0`
 * Update the [changelog](CHANGELOG.md) with a summary of the changes contained in this release
 * Commit and push the release branch
+* Approve the build to be published via Azure DevOps
 
 If any changes are required to the pre-release (e.g. bug fixes, documentation changes):
 
 * Make the required changes on the release branch
 * Commit and push the release branch
+* Approve the build to be published via Azure DevOps
 
 ## General release
 
@@ -42,6 +47,8 @@ If any changes are required to the pre-release (e.g. bug fixes, documentation ch
 To perform a new general release:
 
 * Merge the release branch into `develop`
+* Push `develop`
 * Merge the release branch into `master`
 * Tag `master` with the SemVer version of the release e.g. `1.0.0`
-* Push `master` (and the tag) and `develop`
+* Push `master` and the tag
+* Approve the build to be published via Azure DevOps

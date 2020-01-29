@@ -20,17 +20,20 @@ var configuration = Argument("configuration", "Release");
 public class BuildData
 {
     public string ProjectName { get; }
+    public string ProjectRepositoryUrl { get; }
     public string Configuration { get; }
     public ConvertableDirectoryPath SourceDirectoryPath { get; }
     public ConvertableDirectoryPath DistDirectoryPath { get; }
     public ConvertableFilePath SolutionFilePath { get; }
     public ConvertableDirectoryPath ProjectDirectoryPath { get; }
     public ConvertableDirectoryPath BinDirectoryPath { get; }
-    public GitVersion Version { get; set; }
+    public GitVersion GitVersion { get; set; }
+    public string PackageVersion => GetPackageVersion();
 
-    public BuildData(ICakeContext context, string projectName, string configuration)
+    public BuildData(ICakeContext context, string projectName, string projectRepositoryUrl, string configuration)
     {
         ProjectName = projectName;
+        ProjectRepositoryUrl = projectRepositoryUrl;
         Configuration = configuration;
 
         SourceDirectoryPath = context.Directory("./src");
@@ -39,6 +42,16 @@ public class BuildData
         SolutionFilePath = SourceDirectoryPath + context.File($"{projectName}.sln");
         ProjectDirectoryPath = SourceDirectoryPath + context.Directory(projectName);
         BinDirectoryPath = ProjectDirectoryPath + context.Directory("bin") + context.Directory(configuration);
+    }
+
+    private string GetPackageVersion()
+    {
+        if (GitVersion == null)
+        {
+            throw new InvalidOperationException("`GitVersion` has not been set. Make sure that the 'Version' task has run prior to accessing this property.");
+        }
+
+        return $"{GitVersion.NuGetVersion}{GitVersion.BuildMetaDataPadded}";
     }
 }
 
@@ -50,6 +63,7 @@ Setup<BuildData>(setupContext => {
     return new BuildData(
         setupContext,
         "Meeg.Configuration",
+        "https://github.com/CMeeg/meeg-configuration.git",
         configuration
     );
 });
@@ -79,11 +93,13 @@ Task("Version")
     .IsDependentOn("Restore-NuGet-Packages")
     .Does<BuildData>(data =>
 {
-    data.Version = GitVersion(new GitVersionSettings {
+    data.GitVersion = GitVersion(new GitVersionSettings {
         UpdateAssemblyInfo = true
     });
 
-    Information(data.Version.Dump());
+    Information(data.GitVersion.Dump());
+
+    Information($"PackageVersion: {data.PackageVersion}");
 });
 
 Task("Build")
@@ -119,27 +135,31 @@ Task("NuGet-Pack")
     // Create the NuGet package
 
     var settings = new NuGetPackSettings {
-        Symbols = true,
         OutputDirectory = data.DistDirectoryPath,
         Properties = new Dictionary<string, string> {
             { "id", assemblyInfo.Title },
-            { "version", data.Version.NuGetVersion },
+            { "version", data.PackageVersion },
             { "description", assemblyInfo.Description },
             { "author", assemblyInfo.Company },
             { "copyright", assemblyInfo.Copyright },
             { "configuration", data.Configuration }
+        },
+        Repository = new NuGetRepository {
+            Type = "git",
+            Url = data.ProjectRepositoryUrl,
+            Commit = data.GitVersion.Sha
         }
     };
 
+    if (!BuildSystem.IsLocalBuild)
+    {
+        // Create a symbols package
+
+        settings.Symbols = true;
+        settings.ArgumentCustomization = args => args.Append("-SymbolPackageFormat snupkg");
+    }
+
     NuGetPack(data.ProjectDirectoryPath + File($"{data.ProjectName}.nuspec"), settings);
-
-    // Move symbols files to sub-directory
-    ConvertableFilePath symbolsFilesPath = data.DistDirectoryPath + File("*.symbols.nupkg");
-    ConvertableDirectoryPath symbolsDirectoryPath = data.DistDirectoryPath + Directory("symbols");
-
-    EnsureDirectoryExists(symbolsDirectoryPath);
-
-    MoveFiles(symbolsFilesPath, symbolsDirectoryPath);
 });
 
 Task("NuGet-Publish")
